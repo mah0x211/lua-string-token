@@ -24,12 +24,8 @@ local type = type
 local hmacsha = require('hmac').sha224
 local randstr = require('string.random')
 -- constants
--- 32 byte = 256 bit / 8 bit
-local DATA_LEN = 256 / 8
 -- 56 byte = SHA-224(224 bit) / 8 bit * 2(HEX)
 local SHA_LEN = 224 / 8 * 2
--- SHA_LEN + DELIMITER('.') + MSG_LEM
-local TOKEN_LEN = SHA_LEN + 1 + DATA_LEN
 
 --- compute
 --- @param secret string
@@ -50,23 +46,28 @@ local function verify(secret, token)
         error('secret must be string', 2)
     elseif type(token) ~= 'string' then
         error('token must be string', 2)
-    elseif #token ~= TOKEN_LEN or sub(token, SHA_LEN + 1, SHA_LEN + 1) ~= '.' then
+    elseif #token < SHA_LEN + 1 or sub(token, SHA_LEN + 1, SHA_LEN + 1) ~= '.' then
         return false
     end
 
-    local data = sub(token, -DATA_LEN)
+    local data = sub(token, SHA_LEN + 2)
     return compute(secret, data) == sub(token, 1, SHA_LEN)
 end
 
 --- create
 --- @param secret string
+--- @param nbyte integer @ default 32
 --- @return string str
-local function create(secret)
+local function create(secret, nbyte)
     if type(secret) ~= 'string' then
         error('secret must be string', 2)
+    elseif nbyte == nil then
+        nbyte = 32
+    elseif type(nbyte) ~= 'number' or nbyte < 1 then
+        error('nbyte must be positive-integer', 2)
     end
 
-    local data = randstr(DATA_LEN, 'urlsafe')
+    local data = randstr(nbyte, 'urlsafe')
     return compute(secret, data) .. '.' .. data
 end
 
