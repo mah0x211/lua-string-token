@@ -10,7 +10,7 @@ local function hmacsha(secret, msg)
     return ctx:final()
 end
 
-function testcase.create_verify()
+function testcase.create()
     -- test that create a token
     local s = assert(token.create('foobar'))
     -- confirm
@@ -18,19 +18,36 @@ function testcase.create_verify()
     local hash = string.sub(s, 1, shahex_len)
     local msg = string.sub(s, shahex_len + 2)
     assert.equal(hash, hmacsha('foobar', msg))
+    assert.equal(#msg, 32)
 
-    -- test that returns true
-    assert.is_true(token.verify('foobar', s))
-
-    -- test that returns true
-    assert.is_false(token.verify('foobar', s .. 'hello'))
+    -- test that create a token with nbyte length of random string
+    s = assert(token.create('foobar', 16))
+    -- confirm
+    hash = string.sub(s, 1, shahex_len)
+    msg = string.sub(s, shahex_len + 2)
+    assert.equal(hash, hmacsha('foobar', msg))
+    assert.equal(#msg, 16)
 
     -- test that throws error if invalid secret
     local err = assert.throws(token.create, {})
     assert.match(err, 'secret must be string')
 
+    -- test that throws error if invalid nbyte
+    err = assert.throws(token.create, 'hello', 'world')
+    assert.match(err, 'nbyte must be positive-integer')
+end
+
+function testcase.verify()
+    local s = assert(token.create('foobar'))
+
+    -- test that verify a token
+    assert.is_true(token.verify('foobar', s))
+
+    -- test that returns false
+    assert.is_false(token.verify('foobar', 'invalid_token'))
+
     -- test that throws error if invalid secret
-    err = assert.throws(token.verify, {})
+    local err = assert.throws(token.verify, {})
     assert.match(err, 'secret must be string')
 
     -- test that throws error if invalid token
